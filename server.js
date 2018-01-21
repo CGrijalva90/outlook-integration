@@ -3,13 +3,14 @@ const app = express();
 const bodyParser = require('body-parser');
 const outlookRoutes = require('./api/outlook-routes');
 const keys = require('./config');
+const { API_KEY } = keys;
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
-  res.send('hello world');
+  res.send('Hello world!');
 });
 
 // Set up middleware:
@@ -25,8 +26,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Outlook routes (calendar and mail will be implemented)
 app.use('/outlook', outlookRoutes);
 
+// Error handling middleware
 app.use((req, res, next) => {
   const error = new Error('Not found');
   error.status = 404;
