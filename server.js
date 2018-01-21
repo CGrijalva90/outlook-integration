@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const authHelper = require('./authHelper');
 const bodyParser = require('body-parser');
 const outlookRoutes = require('./api/outlook-routes');
 const keys = require('./config');
@@ -10,7 +11,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
-  res.send('Hello world!');
+  res.send('Greetings from the index page!');
+});
+
+app.get('/login', (req, res) => {
+  res.send(authHelper.getAuthUrl);
 });
 
 // Set up middleware:
