@@ -1,6 +1,6 @@
 const config = {
-  API_KEY: '3f6a8331-71d8-4bce-a841-4064f03465f1',
-  SECRET_KEY: 'twhQUD5147]:;fomaEJNH8)'
+  API_KEY: 'e89374e9-d189-486e-b463-f63161ea9471',
+  SECRET_KEY: 'lgtDKA17=;=!hhmyTNMG755'
 };
 
 module.exports = config;
