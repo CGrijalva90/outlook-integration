@@ -5,11 +5,19 @@ const bodyParser = require('body-parser');
 const outlookRoutes = require('./api/outlook-routes');
 const pages = require('./pages');
 const keys = require('./config');
+const session = require('express-session');
 const { API_KEY } = keys;
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: '0dc529ba-5051-4cd6-8b67-c9a901bb8bdf',
+    resave: false,
+    saveUninitialized: false
+  })
+);
 
 app.get('/', (req, res) => {
   res.send('Greetings from the index page!');
@@ -17,44 +25,6 @@ app.get('/', (req, res) => {
 
 app.get('/login', (req, res) => {
   res.send(authHelper.getAuthUrl);
-});
-
-const tokenReceived = (req, res, error, token) => {
-  if (error) {
-    console.log(`ERROR getting token: ${error}`);
-    res.send(`ERROR getting token: ${error}`);
-  } else {
-    // save tokens in session
-    req.session.access_token = token.token.access_token;
-    req.session.refresh_token = token.token.refresh_token;
-    req.session.email = authHelper.getEmailFromIdToken(token.token.id_token);
-    res.redirect('/logincomplete');
-  }
-};
-
-app.get('/authorize', (req, res) => {
-  const authCode = req.query.code;
-  if (authCode) {
-    console.log('');
-    console.log(`Retrieved authCode in /authorize ${authCode}`);
-    authHelper.getTokenFromCode(authCode, tokenReceived, req, res);
-  } else {
-    res.redirect('/');
-  }
-});
-
-app.get('/logincomplete', (req, res) => {
-  const { access_token } = req.session;
-  const { refresh_token } = req.session;
-  const { email } = req.session;
-
-  if (access_token === undefined || refresh_token === undefined) { // eslint-disable-line
-    console.log('/logincomplete called while not logged in');
-    res.redirect('/');
-    return;
-  }
-
-  res.send(pages.loginCompletePage(email));
 });
 
 // Set up middleware:
@@ -72,6 +42,42 @@ app.use((req, res, next) => {
 
 // Outlook routes (calendar and mail will be implemented)
 app.use('/outlook', outlookRoutes);
+
+const tokenReceived = (req, res, error, token) => {
+  if (error) {
+    console.log('Error getting token', error);
+    res.send(`Error getting token: ${error}`);
+  } else {
+    req.session.access_token = token.token.access_token;
+    req.session.refresh_token = token.token.refresh_token;
+    res.redirect('/logincomplete');
+  }
+};
+
+app.get('/authorize', (req, res) => {
+  console.log("Request handler 'authorize' was called.");
+
+  const { code } = req.query;
+  // The authorization code is passed as a query parameter
+
+  console.log(`Code: ${code}`);
+  authHelper.getTokenFromCode(code, tokenReceived, res);
+});
+
+app.get('/logincomplete', (req, res) => {
+  const { access_token } = req.session;
+  const { refresh_token } = req.session;
+  const { email } = req.session;
+
+  if (access_token === undefined || refresh_token === undefined) {
+    // eslint-disable-line
+    console.log('/logincomplete called while not logged in');
+    res.redirect('/');
+    return;
+  }
+
+  res.send(`Access token : ${access_token}`);
+});
 
 // Error handling middleware
 app.use((req, res, next) => {

@@ -34,26 +34,52 @@ function getAuthUrl() {
   return returnVal;
 }
 
+// function getTokenFromCode(auth_code, callback, response) {
+//   var token;
+//   oauth2.authorizationCode.getToken(
+//     {
+//       code: auth_code,
+//       redirect_uri: redirectUri,
+//       scope: scopes.join(' ')
+//     },
+//     function(error, result) {
+//       if (error) {
+//         console.log('Access token error: ', error.message);
+//         callback(response, error, null);
+//       } else {
+//         token = oauth2.accessToken.create(result);
+//         console.log('Token created: ', token.token);
+//         callback(response, null, token);
+//       }
+//     }
+//   );
+// }
+
 function getTokenFromCode(auth_code, callback, response) {
   var token;
-  oauth2.authorizationCode.getToken(
-    {
+  oauth2.authorizationCode
+    .getToken({
       code: auth_code,
       redirect_uri: redirectUri,
       scope: scopes.join(' ')
-    },
-    function(error, result) {
-      if (error) {
-        console.log('Access token error: ', error.message);
-        callback(response, error, null);
-      } else {
-        token = oauth2.accessToken.create(result);
-        console.log('Token created: ', token.token);
-        callback(response, null, token);
-      }
-    }
-  );
+    })
+    .then(result => {
+      token = oauth2.accessToken.create(result);
+      console.log(token, token.token);
+    })
+    .catch(error => {
+      console.log('Access Token Error', error.message);
+    });
 }
+
+// oauth2.authorizationCode
+//   .getToken(tokenConfig)
+//   .then(result => {
+//     const accessToken = oauth2.accessToken.create(result);
+//   })
+//   .catch(error => {
+//     console.log('Access Token Error', error.message);
+//   });
 
 function refreshAccessToken(refreshToken, callback) {
   var tokenObj = oauth2.accessToken.create({ refresh_token: refreshToken });
