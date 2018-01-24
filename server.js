@@ -27,7 +27,7 @@ app.get('/', (req, res) => {
 
 // Set up middleware:
 
-// CORS protection
+// Set CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', '*');
@@ -48,6 +48,7 @@ app.get('/authorize', (req, res) => {
   processAuthCode(res, code);
 });
 
+// oAuth  process
 async function processAuthCode(response, code) {
   let token, email;
 
@@ -97,6 +98,8 @@ async function getUserEmail(token) {
   return res.mail ? res.mail : res.userPrincipalName;
 }
 
+
+// Function to retrieve specific value from cookies
 function getValueFromCookie(valueName, cookie) {
   if (cookie.includes(valueName)) {
     let start = cookie.indexOf(valueName) + valueName.length + 1;
@@ -106,13 +109,14 @@ function getValueFromCookie(valueName, cookie) {
   }
 }
 
+
+// Function to retrieve stored access token
 async function getAccessToken(request, response) {
   const expiration = new Date(
     parseFloat(
       getValueFromCookie('node-tutorial-token-expires', request.headers.cookie)
     )
   );
-
   // Check if token is still valid
   if (expiration <= new Date()) {
     // refresh token
@@ -131,11 +135,12 @@ async function getAccessToken(request, response) {
     response.setHeader('Set-Cookie', cookies);
     return newToken.token.access_token;
   }
-
   // Return cached token
   return getValueFromCookie('node-tutorial-token', request.headers.cookie);
 }
 
+
+// Calendar route returning JSON data of user's events
 app.get('/calendar', async (request, response) => {
   const token = getValueFromCookie(
     'node-tutorial-token',
@@ -156,7 +161,6 @@ app.get('/calendar', async (request, response) => {
         done(null, token);
       }
     });
-
     try {
       // Get the 10 events with the greatest start date
       const res = await client
@@ -178,18 +182,20 @@ app.get('/calendar', async (request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html' });
     response.write('<p> No token found in cookie!</p>');
   }
-
   response.end();
 });
 
+
+
 // Error handling middleware:
-// 404 for unkown
+// 404 for unkown routes
 app.use((req, res, next) => {
   const error = new Error('Not found');
   error.status = 404;
   next(error);
 });
 
+// 500 for internal server errors
 app.use((error, req, res, next) => {
   res.status(error.status || 500);
   res.json({
