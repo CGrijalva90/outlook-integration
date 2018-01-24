@@ -7,26 +7,17 @@ const session = require('express-session');
 const microsoftGraph = require('@microsoft/microsoft-graph-client');
 const { API_KEY } = keys;
 
-// const handle = {};
-// handle['/mail'] = mail;
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(
-//   session({
-//     secret: '0dc529ba-5051-4cd6-8b67-c9a901bb8bdf',
-//     resave: false,
-//     saveUninitialized: false
-//   })
-// );
+
 
 app.get('/', (req, res) => {
   res.render('home', { link: authHelper.getAuthUrl() });
 });
 
 // Set up middleware:
-
 // Set CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -86,7 +77,7 @@ async function getUserEmail(token) {
   // Create a Graph client
   const client = microsoftGraph.Client.init({
     authProvider: done => {
-      // First parameter is is error handling if no token is retrieved
+      // First parameter is is error handling if no token is retrieved.
       // If token is available then return the token
       done(null, token);
     }
@@ -184,8 +175,6 @@ app.get('/calendar', async (request, response) => {
   }
   response.end();
 });
-
-
 
 // Error handling middleware:
 // 404 for unkown routes
