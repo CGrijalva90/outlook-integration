@@ -21,10 +21,8 @@ const redirectUri = 'http://localhost:8000/authorize';
 const scopes = [
   'openid',
   'offline_access',
-  'User.Read',
   'Mail.Read',
   'Calendars.Read',
-  'Contacts.Read'
 ];
 
 function getAuthUrl() {
