@@ -2,7 +2,6 @@ const express = require('express');
 const app = express();
 const authHelper = require('./authHelper');
 const bodyParser = require('body-parser');
-const outlookRoutes = require('./api/outlook-routes');
 const keys = require('./config');
 const session = require('express-session');
 const microsoftGraph = require('@microsoft/microsoft-graph-client');
@@ -14,20 +13,16 @@ const { API_KEY } = keys;
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(
-  session({
-    secret: '0dc529ba-5051-4cd6-8b67-c9a901bb8bdf',
-    resave: false,
-    saveUninitialized: false
-  })
-);
+// app.use(
+//   session({
+//     secret: '0dc529ba-5051-4cd6-8b67-c9a901bb8bdf',
+//     resave: false,
+//     saveUninitialized: false
+//   })
+// );
 
 app.get('/', (req, res) => {
-  res.redirect('/outlook');
-});
-
-app.get('/login', (req, res) => {
-  res.send(authHelper.getAuthUrl);
+  res.render('home', { link: authHelper.getAuthUrl() });
 });
 
 // Set up middleware:
@@ -43,15 +38,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Outlook routes (calendar and mail will be implemented)
-app.use('/outlook', outlookRoutes);
-
 app.get('/authorize', (req, res) => {
   console.log("Request handler 'authorize' was called.");
 
   const { code } = req.query;
-  // The authorization code is passed as a query parameter
 
+  // The authorization code is passed as a query parameter
   console.log(`Code: ${code}`);
   processAuthCode(res, code);
 });
@@ -85,25 +77,23 @@ async function processAuthCode(response, code) {
     `node-tutorial-email=${email ? email : ''}';Max-Age=4000`
   ];
   response.setHeader('Set-Cookie', cookies);
-  response.writeHead(302, { Location: 'http://localhost:8000/mail' });
-  response.end();
+  response.redirect(302, '/calendar');
 }
 
+// Function to retrieve email in order to find user
 async function getUserEmail(token) {
   // Create a Graph client
   const client = microsoftGraph.Client.init({
     authProvider: done => {
-      // Just return the token
+      // First parameter is is error handling if no token is retrieved
+      // If token is available then return the token
       done(null, token);
     }
   });
 
-  // Get the Graph /Me endpoint to get user email address
   const res = await client.api('/me').get();
 
-  // Office 365 users have a mail attribute
-  // Outlook.com users do not, instead they have
-  // userPrincipalName
+  // Outlook.com users have userPrincipalName instead of a mail attribute
   return res.mail ? res.mail : res.userPrincipalName;
 }
 
@@ -123,6 +113,7 @@ async function getAccessToken(request, response) {
     )
   );
 
+  // Check if token is still valid
   if (expiration <= new Date()) {
     // refresh token
     console.log('TOKEN EXPIRED, REFRESHING');
@@ -145,18 +136,11 @@ async function getAccessToken(request, response) {
   return getValueFromCookie('node-tutorial-token', request.headers.cookie);
 }
 
-app.get('/mail', async function mail(request, response) {
-  let token;
-
-  try {
-    token = await getAccessToken(request, response);
-  } catch (error) {
-    response.writeHead(200, { 'Content-Type': 'text/html' });
-    response.write('<p> No token found in cookie!</p>');
-    response.end();
-    return;
-  }
-
+app.get('/calendar', async (request, response) => {
+  const token = getValueFromCookie(
+    'node-tutorial-token',
+    request.headers.cookie
+  );
   console.log('Token found in cookie: ', token);
   const email = getValueFromCookie(
     'node-tutorial-email',
@@ -164,69 +148,56 @@ app.get('/mail', async function mail(request, response) {
   );
   console.log('Email found in cookie: ', email);
 
-  response.writeHead(200, { 'Content-Type': 'text/html' });
-  response.write('<div><h1>Your inbox</h1></div>');
-
-  // Create a Graph client
-  const client = microsoftGraph.Client.init({
-    authProvider: done => {
-      // Just return the token
-      done(null, token);
-    }
-  });
-
-  try {
-    // Get the 10 newest messages
-    const res = await client
-      .api('/me/mailfolders/inbox/messages')
-      .header('X-AnchorMailbox', email)
-      .top(10)
-      .select('subject,from,receivedDateTime,isRead')
-      .orderby('receivedDateTime DESC')
-      .get();
-
-    console.log(`getMessages returned ${res.value.length} messages.`);
-    response.write(
-      '<table><tr><th>From</th><th>Subject</th><th>Received</th></tr>'
-    );
-    res.value.forEach(message => {
-      console.log('  Subject: ' + message.subject);
-      const from = message.from ? message.from.emailAddress.name : 'NONE';
-      response.write(
-        `<tr><td>${from}` +
-          `</td><td>${message.isRead ? '' : '<b>'} ${message.subject} ${
-            message.isRead ? '' : '</b>'
-          }` +
-          `</td><td>${message.receivedDateTime.toString()}</td></tr>`
-      );
+  if (token) {
+    // Create a Graph client
+    const client = microsoftGraph.Client.init({
+      authProvider: done => {
+        // Just return the token
+        done(null, token);
+      }
     });
 
-    response.write('</table>');
-  } catch (err) {
-    console.log(`getMessages returned an error: ${err}`);
-    response.write(`<p>ERROR: ${err}</p>`);
+    try {
+      // Get the 10 events with the greatest start date
+      const res = await client
+        .api('/me/events')
+        .header('X-AnchorMailbox', email)
+        .top(10)
+        .select('subject,start,end,attendees')
+        .orderby('start/dateTime DESC')
+        .get();
+
+      console.log(res.value);
+      response.status(200).json(res.value)
+
+    } catch (err) {
+      console.log(`getEvents returned an error: ${err}`);
+      response.write(`<p>ERROR: ${err}</p>`);
+    }
+  } else {
+    response.writeHead(200, { 'Content-Type': 'text/html' });
+    response.write('<p> No token found in cookie!</p>');
   }
 
   response.end();
 });
 
-// app.get('/mail', async(mail));
+// Error handling middleware:
+// 404 for unkown
+app.use((req, res, next) => {
+  const error = new Error('Not found');
+  error.status = 404;
+  next(error);
+});
 
-// Error handling middleware
-// app.use((req, res, next) => {
-//   const error = new Error('Not found');
-//   error.status = 404;
-//   next(error);
-// });
-
-// app.use((error, req, res, next) => {
-//   res.status(error.status || 500);
-//   res.json({
-//     error: {
-//       message: error.message
-//     }
-//   });
-// });
+app.use((error, req, res, next) => {
+  res.status(error.status || 500);
+  res.json({
+    error: {
+      message: error.message
+    }
+  });
+});
 
 const port = process.env.PORT || 8000;
 
