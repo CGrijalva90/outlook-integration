@@ -61,10 +61,10 @@ async function processAuthCode(response, code) {
   }
 
   const cookies = [
-    `node-tutorial-token=${token.token.access_token};Max-Age=4000`,
-    `node-tutorial-refresh-token=${token.token.refresh_token};Max-Age=4000`,
-    `node-tutorial-token-expires=${token.token.expires_at.getTime()};Max-Age=4000`,
-    `node-tutorial-email=${email ? email : ''}';Max-Age=4000`
+    `rocalytics-token=${token.token.access_token};Max-Age=4000`,
+    `rocalytics-refresh-token=${token.token.refresh_token};Max-Age=4000`,
+    `rocalytics-token-expires=${token.token.expires_at.getTime()};Max-Age=4000`,
+    `rocalytics-email=${email ? email : ''}';Max-Age=4000`
   ];
   response.setHeader('Set-Cookie', cookies);
   response.redirect(302, '/calendar');
@@ -101,7 +101,7 @@ function getValueFromCookie(valueName, cookie) {
 async function getAccessToken(request, response) {
   const expiration = new Date(
     parseFloat(
-      getValueFromCookie('node-tutorial-token-expires', request.headers.cookie)
+      getValueFromCookie('rocalytics-token-expires', request.headers.cookie)
     )
   );
   // Check if token is still valid
@@ -109,32 +109,32 @@ async function getAccessToken(request, response) {
     // refresh token
     console.log('TOKEN EXPIRED, REFRESHING');
     const refresh_token = getValueFromCookie(
-      'node-tutorial-refresh-token',
+      'rocalytics-refresh-token',
       request.headers.cookie
     );
     const newToken = await authHelper.refreshAccessToken(refresh_token);
 
     const cookies = [
-      `node-tutorial-token=${token.token.access_token};Max-Age=4000`,
-      `node-tutorial-refresh-token=${token.token.refresh_token};Max-Age=4000`,
-      `node-tutorial-token-expires=${token.token.expires_at.getTime()};Max-Age=4000`
+      `rocalytics-token=${token.token.access_token};Max-Age=4000`,
+      `rocalytics-refresh-token=${token.token.refresh_token};Max-Age=4000`,
+      `rocalytics-token-expires=${token.token.expires_at.getTime()};Max-Age=4000`
     ];
     response.setHeader('Set-Cookie', cookies);
     return newToken.token.access_token;
   }
   // Return cached token
-  return getValueFromCookie('node-tutorial-token', request.headers.cookie);
+  return getValueFromCookie('rocalytics-token', request.headers.cookie);
 }
 
 // Calendar route returning JSON data of user's events
 app.get('/calendar', async (request, response) => {
   const token = getValueFromCookie(
-    'node-tutorial-token',
+    'rocalytics-token',
     request.headers.cookie
   );
   console.log('Token found in cookie: ', token);
   const email = getValueFromCookie(
-    'node-tutorial-email',
+    'rocalytics-email',
     request.headers.cookie
   );
   console.log('Email found in cookie: ', email);
@@ -170,14 +170,16 @@ app.get('/calendar', async (request, response) => {
   response.end();
 });
 
+
+// Contact route
 app.get('/contacts', async (request, response) => {
   const token = getValueFromCookie(
-    'node-tutorial-token',
+    'rocalytics-token',
     request.headers.cookie
   );
   console.log('Token found in cookie: ', token);
   const email = getValueFromCookie(
-    'node-tutorial-email',
+    'rocalytics-email',
     request.headers.cookie
   );
   console.log('Email found in cookie: ', email);
