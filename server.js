@@ -7,11 +7,9 @@ const session = require('express-session');
 const microsoftGraph = require('@microsoft/microsoft-graph-client');
 const { API_KEY } = keys;
 
-
 app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
 
 app.get('/', (req, res) => {
   res.render('home', { link: authHelper.getAuthUrl() });
@@ -89,7 +87,6 @@ async function getUserEmail(token) {
   return res.mail ? res.mail : res.userPrincipalName;
 }
 
-
 // Function to retrieve specific value from cookies
 function getValueFromCookie(valueName, cookie) {
   if (cookie.includes(valueName)) {
@@ -99,7 +96,6 @@ function getValueFromCookie(valueName, cookie) {
     return cookie.substring(start, end);
   }
 }
-
 
 // Function to retrieve stored access token
 async function getAccessToken(request, response) {
@@ -129,7 +125,6 @@ async function getAccessToken(request, response) {
   // Return cached token
   return getValueFromCookie('node-tutorial-token', request.headers.cookie);
 }
-
 
 // Calendar route returning JSON data of user's events
 app.get('/calendar', async (request, response) => {
@@ -163,10 +158,54 @@ app.get('/calendar', async (request, response) => {
         .get();
 
       console.log(res.value);
-      response.status(200).json(res.value)
-
+      response.status(200).json(res.value);
     } catch (err) {
       console.log(`getEvents returned an error: ${err}`);
+      response.write(`<p>ERROR: ${err}</p>`);
+    }
+  } else {
+    response.writeHead(200, { 'Content-Type': 'text/html' });
+    response.write('<p> No token found in cookie!</p>');
+  }
+  response.end();
+});
+
+app.get('/contacts', async (request, response) => {
+  const token = getValueFromCookie(
+    'node-tutorial-token',
+    request.headers.cookie
+  );
+  console.log('Token found in cookie: ', token);
+  const email = getValueFromCookie(
+    'node-tutorial-email',
+    request.headers.cookie
+  );
+  console.log('Email found in cookie: ', email);
+
+  if (token) {
+    // Create a Graph client
+    const client = microsoftGraph.Client.init({
+      authProvider: done => {
+        // Just return the token
+        done(null, token);
+      }
+    });
+
+    try {
+      // Get the first 10 contacts in alphabetical order
+      // by given name
+      const res = await client
+        .api('/me/contacts')
+        .header('X-AnchorMailbox', email)
+        .top(10)
+        .select('givenName,surname,emailAddresses')
+        .orderby('givenName ASC')
+        .get();
+
+      console.log(res.value);
+      response.status(200).json(res.value);
+    } catch (err) {
+      console.log(`getContacts returned an error: ${err}`);
       response.write(`<p>ERROR: ${err}</p>`);
     }
   } else {
